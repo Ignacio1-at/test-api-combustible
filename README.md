@@ -52,24 +52,54 @@ curl "http://localhost:8000/api/stations/search?lat=-20.2&lng=-70.1&product=dies
 curl "http://localhost:8000/api/stations/search?lat=-20.2&lng=-70.1&product=97&nearest=true&store=true&cheapest=true"
 ```
 
+#### 5. Buscar en Santiago (gasolina 97)
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-33.45&lng=-70.65&product=97&nearest=true"
+```
+
+#### 6. Buscar en Valparaíso (diesel)
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-33.03&lng=-71.62&product=diesel&nearest=true"
+```
+
+#### 7. Buscar en Concepción (gasolina 95 más barata)
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-36.83&lng=-73.03&product=95&nearest=true&cheapest=true"
+```
+
+#### 8. Buscar estación específica ARAMCO en Iquique
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-20.238&lng=-70.143&product=97&nearest=true"
+```
+
+#### 9. Buscar con kerosene en zona norte
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-24.5&lng=-70.4&product=kerosene&nearest=true"
+```
+
+#### 10. Buscar solo estaciones con tienda (sin filtro de cercanía)
+```bash
+curl "http://localhost:8000/api/stations/search?lat=-33.45&lng=-70.65&product=93&store=true"
+```
+
 ### Respuesta de Ejemplo
 
 ```json
 {
   "success": true,
   "data": {
-    "id": "10056",
+    "id": "1555",
     "compania": "COPEC",
-    "direccion": "San Martin Esq. Uribe",
-    "comuna": "Antofagasta",
-    "region": "ANTOFAGASTA",
-    "latitud": -23.6491868026,
-    "longitud": -70.4011811037,
-    "distancia(lineal)": 0.5,
-    "precios93": 1328,
+    "direccion": "ARTURO PRAT 683",
+    "comuna": "Santiago Centro",
+    "region": "Metropolitana de Santiago",
+    "latitud": -33.45374438281472,
+    "longitud": -70.64860761165619,
+    "distancia(lineal)": 0.44,
+    "precios97": 1303,
     "tienda": {
-      "codigo": "2510",
-      "nombre": "Pronto Antofagasta",
+      "codigo": "1555",
+      "nombre": "Pronto Santiago Centro",
       "tipo": "Pronto"
     },
     "tiene_tienda": true
@@ -81,15 +111,22 @@ curl "http://localhost:8000/api/stations/search?lat=-20.2&lng=-70.1&product=97&n
 
 ```
 mi_api_combustible/
-├── main.py                 # Aplicación principal FastAPI
-├── requirements.txt        # Dependencias
-├── services/
+├── main.py                    # FastAPI app principal
+├── requirements.txt           # Dependencias
+├── pytest.ini               # Config de tests
+├── README.md                 # Documentación
+├── services/                 # Servicios
 │   ├── __init__.py
-│   └── fuel_service.py     # Lógica de negocio
-├── utils/
+│   └── fuel_service.py      # Servicio principal
+├── utils/                    # Utilidades modulares
 │   ├── __init__.py
-│   └── distance.py         # Cálculo de distancias
-└── README.md              # Este archivo
+│   ├── distance.py          # Cálculos geográficos
+│   ├── mappings.py          # Mapeos de datos
+│   └── search_utils.py      # Lógica de búsqueda
+└── tests/                    # Suite de tests
+    ├── __init__.py
+    ├── test_api.py          # Tests de endpoints
+    └── test_services.py     # Tests de servicios y utilidades
 ```
 
 ## Dependencias
@@ -97,6 +134,16 @@ mi_api_combustible/
 - FastAPI
 - httpx  
 - uvicorn
+
+## Agregado nuevo
+
+- ** Health Check**: `/health` - Monitoreo del estado de la app
+- ** Variables de entorno**: Configuración externa via `.env`
+- ** Tests unitarios**: Probando test con pytest
+
+### Endpoints adicionales
+- `GET /health` - Estado de la aplicación y API externa
+- `GET /test` - Verificación rápida de funcionamiento
 
 ## Datos
 
@@ -109,4 +156,39 @@ Distancias calculadas con fórmula Haversine en kilómetros.
 ## Documentación
 
 Swagger UI: http://localhost:8000/docs
+
+## Testing
+
+Para ejecutar los tests unitarios:
+
+```bash
+# Activar entorno virtual
+source venv/bin/activate
+
+# Ejecutar todos los tests
+pytest tests/ -v
+
+# Ejecutar tests específicos
+pytest tests/test_api.py -v
+pytest tests/test_services.py -v
+```
+
+### Cobertura de Tests
+- Endpoints de la API
+- Validación de parámetros
+- Cálculo de distancias
+- Manejo de errores
+- Health check
+
+## Config
+
+El proyecto utiliza variables de entorno:
+
+```env
+API_BASE_URL=https://api.bencinaenlinea.cl/api
+TIMEOUT_SECONDS=30
+APP_NAME=API de Estaciones de Combustible Chile
+APP_VERSION=1.0.0
+DEBUG_MODE=false
+```
 ```

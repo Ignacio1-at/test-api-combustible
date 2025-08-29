@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from datetime import datetime
 from services.fuel_service import FuelService
 
 app = FastAPI(
@@ -19,6 +20,20 @@ def inicio():
 @app.get("/test")
 def prueba():
     return {"status": "OK", "info": "Conexión ready"}
+
+@app.get("/health")
+def chequeo_salud():
+    """Endpoint de monitoreo del estado de la aplicación"""
+    service = FuelService()
+    api_status = service.test_connection()
+    
+    return {
+        "status": "healthy" if "ready" in api_status else "degraded",
+        "timestamp": datetime.now().isoformat(),
+        "api_externa": api_status,
+        "version": "1.0.0",
+        "uptime": "running"
+    }
 
 @app.get("/combustibles")
 def obtener_combustibles():
@@ -55,13 +70,22 @@ def debug_estacion():
     data = service.buscar_estaciones()
     
     if 'data' in data and len(data['data']) > 0:
-        # Mostrar solo la primera estación para ver la estructura
-        primera_estacion = data['data'][0]
-        return {
-            "estructura": primera_estacion,
-            "precios_disponibles": primera_estacion.get('Prices', []),
-            "total_estaciones": len(data['data'])
-        }
+        # Buscar específicamente la estación 42
+        station_42 = None
+        for station in data['data']:
+            if station.get('id') == 42:
+                station_42 = station
+                break
+        
+        if station_42:
+            return {
+                "estacion_42": station_42,
+                "servicios": station_42.get('servicios', []),
+                "cantidad_servicios": len(station_42.get('servicios', [])),
+                "estructura_servicio": station_42.get('servicios', [])[0] if station_42.get('servicios') else "Sin servicios"
+            }
+        else:
+            return {"error": "Estación 42 no encontrada en búsqueda masiva"}
     return {"error": "No hay datos"}
 
 @app.get("/debug/tiendas")

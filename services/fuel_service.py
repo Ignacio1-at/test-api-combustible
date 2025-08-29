@@ -1,13 +1,34 @@
 import httpx
+import os
+from dotenv import load_dotenv
 from utils.distance import calculate_distance
+from utils.mappings import (
+    get_product_id, 
+    get_company_name, 
+    has_convenience_store, 
+    get_store_info, 
+    validate_product,
+    get_valid_products
+)
+from utils.search_utils import (
+    process_station_data,
+    filter_stations_by_store,
+    apply_search_logic,
+    build_error_response,
+    validate_coordinates
+)
+
+# Cargar variables de entorno
+load_dotenv()
 
 class FuelService:
     def __init__(self):
-        self.api_url = "https://api.bencinaenlinea.cl/api"
+        self.api_url = os.getenv("API_BASE_URL", "https://api.bencinaenlinea.cl/api")
+        self.timeout = int(os.getenv("TIMEOUT_SECONDS", "30"))
     
     def test_connection(self):
         try:
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.get(f"{self.api_url}/combustible_ciudadano")
                 if response.status_code == 200:
                     return "Conexión ready"
@@ -18,7 +39,7 @@ class FuelService:
     
     def get_combustibles(self):
         try:
-            with httpx.Client(timeout=10.0) as client:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.get(f"{self.api_url}/combustible_ciudadano")
                 if response.status_code == 200:
                     return response.json()
@@ -29,7 +50,7 @@ class FuelService:
         
     def buscar_estaciones(self):
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=self.timeout) as client:
                 response = client.get(f"{self.api_url}/busqueda_estacion_filtro")
                 if response.status_code == 200:
                     return response.json()
@@ -41,115 +62,40 @@ class FuelService:
     def search_stations(self, lat: float, lng: float, product: str, nearest: bool = False, 
                        store: bool = False, cheapest: bool = False):
         try:
+            # Validar coordenadas
+            if not validate_coordinates(lat, lng):
+                return build_error_response("Coordenadas fuera del rango válido para Chile")
+            
+            # Validar producto
+            if not validate_product(product):
+                valid_products = get_valid_products()
+                return build_error_response(f"Producto no válido. Use: {', '.join(valid_products)}")
+            
             # Obtener todas las estaciones
-            estaciones_data = self.buscar_estaciones()
-            if 'error' in estaciones_data:
-                return estaciones_data
+            datos_estaciones = self.buscar_estaciones()
+            if 'error' in datos_estaciones:
+                return datos_estaciones
             
-            estaciones = estaciones_data.get('data', [])
+            estaciones = datos_estaciones.get('data', [])
+            id_producto = get_product_id(product)
             
-            # Mapeo de productos basado en la API real
-            product_map = {"93": 1, "95": 7, "97": 2, "diesel": 3, "kerosene": 4}
-            product_id = product_map.get(product.lower())
-            
-            if not product_id:
-                return {"error": "Producto no válido. Use: 93, 95, 97, diesel, kerosene"}
-            
-            resultado = []
-            
+            # Procesar cada estación
+            estaciones_validas = []
             for estacion in estaciones:
-                # Validar coordenadas
-                if not estacion.get('latitud') or not estacion.get('longitud'):
-                    continue
-                    
-                # Buscar el combustible específico
-                combustibles = estacion.get('combustibles', [])
-                precio_producto = None
-                
-                for combustible in combustibles:
-                    if combustible.get('id') == product_id:
-                        precio_str = combustible.get('precio')
-                        if precio_str is not None:
-                            try:
-                                precio_producto = int(float(precio_str))
-                                break
-                            except (ValueError, TypeError):
-                                continue
-                
-                if precio_producto is None:
-                    continue
-                
-                 # Verificar si tiene tienda
-                servicios = estacion.get('servicios', [])
-                # Considerar que tiene tienda si tiene 2 o más servicios
-                tiene_tienda = len(servicios) >= 2
-                
-                # Filtrar por tienda si se requiere
-                if store and not tiene_tienda:
-                    continue
-                
-                # Calcular distancia
-                try:
-                    est_lat_str = estacion.get('latitud')
-                    est_lng_str = estacion.get('longitud')
-                    
-                    if est_lat_str is None or est_lng_str is None:
-                        continue
-                        
-                    est_lat = float(est_lat_str)
-                    est_lng = float(est_lng_str)
-                    distancia = calculate_distance(lat, lng, est_lat, est_lng)
-                except (ValueError, TypeError):
-                    continue
-                
-                # Obtener información de tienda si existe
-                tienda_info = None
-                if tiene_tienda and estacion.get('tienda'):
-                    tienda_data = estacion.get('tienda', {})
-                    tienda_info = {
-                        "codigo": tienda_data.get('codigo_tienda', tienda_data.get('CodigoTienda', 'N/A')),
-                        "nombre": tienda_data.get('nombre_tienda', tienda_data.get('NombreTienda', 'N/A')),
-                        "tipo": tienda_data.get('tipo', tienda_data.get('Tipo', 'N/A'))
-                    }
-                
-                # Crear el objeto de respuesta según el formato requerido
-                estacion_resultado = {
-                    "id": str(estacion.get('id', 'N/A')),
-                    "compania": estacion.get('marca', estacion.get('Compania', 'N/A')),
-                    "direccion": estacion.get('direccion', estacion.get('Direccion', 'N/A')),
-                    "comuna": estacion.get('comuna', estacion.get('Comuna', 'N/A')),
-                    "region": estacion.get('region', estacion.get('Region', 'N/A')),
-                    "latitud": est_lat,
-                    "longitud": est_lng,
-                    "distancia(lineal)": round(distancia, 2),
-                    f"precios{product}": precio_producto,
-                    "tiene_tienda": tiene_tienda
-                }
-                
-                # Agregar información de tienda si existe
-                if tienda_info:
-                    estacion_resultado["tienda"] = tienda_info
-                
-                resultado.append(estacion_resultado)
+                estacion_procesada = process_station_data(estacion, lat, lng, product, id_producto)
+                if estacion_procesada:
+                    estaciones_validas.append(estacion_procesada)
             
-            # Implementación de los 4 casos de búsqueda
-            if nearest and cheapest:
-                # Caso: más cercana con menor precio
-                resultado.sort(key=lambda x: x['distancia(lineal)'])
-                cercanas = resultado[:15]  # Top 15 más cercanas
-                cercanas.sort(key=lambda x: x[f'precios{product}'])  # Entre esas, la más barata
-                return cercanas[0] if cercanas else {"error": "No se encontraron estaciones"}
-            elif nearest:
-                # Caso: más cercana
-                resultado.sort(key=lambda x: x['distancia(lineal)'])
-            elif cheapest:
-                # Caso: menor precio
-                resultado.sort(key=lambda x: x[f'precios{product}'])
-            else:
-                # Sin criterios específicos, ordenar por distancia
-                resultado.sort(key=lambda x: x['distancia(lineal)'])
+            # Filtrar por tienda si se requiere
+            estaciones_filtradas = filter_stations_by_store(estaciones_validas, store)
             
-            return resultado[0] if resultado else {"error": "No se encontraron estaciones"}
+            # Aplicar lógica de búsqueda
+            resultado = apply_search_logic(estaciones_filtradas, product, nearest, cheapest)
+            
+            if not resultado:
+                return build_error_response("No se encontraron estaciones que cumplan los criterios")
+            
+            return resultado
             
         except Exception as e:
-            return {"error": str(e)}
+            return build_error_response(str(e))

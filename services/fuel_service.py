@@ -10,7 +10,7 @@ class FuelService:
             with httpx.Client(timeout=10.0) as client:
                 response = client.get(f"{self.api_url}/combustible_ciudadano")
                 if response.status_code == 200:
-                    return "Conexión exitosa con API real"
+                    return "Conexión ready"
                 else:
                     return f"Respuesta: {response.status_code}"
         except Exception as e:

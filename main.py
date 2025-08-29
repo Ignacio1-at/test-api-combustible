@@ -11,14 +11,14 @@ app = FastAPI(
 def inicio():
     service = FuelService()
     return {
-        "mensaje": "Mi API está funcionando",
-        "autor": "Ignacio",
+        "mensaje": "Esta ready",
+        "autor": "Ignacio Torres González",
         "test": service.test_connection()
     }
 
 @app.get("/test")
 def prueba():
-    return {"status": "OK", "info": "Conexión exitosa"}
+    return {"status": "OK", "info": "Conexión ready"}
 
 @app.get("/combustibles")
 def obtener_combustibles():

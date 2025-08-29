@@ -102,36 +102,52 @@ class FuelService:
                 except (ValueError, TypeError):
                     continue
                 
-                resultado.append({
-                    "id": estacion.get('id'),
-                    "compania": estacion.get('marca', 'N/A'),
-                    "direccion": estacion.get('direccion', 'N/A'),
-                    "comuna": estacion.get('comuna', 'N/A'),
-                    "region": estacion.get('region', 'N/A'),
+                # Obtener información de tienda si existe
+                tienda_info = None
+                if tiene_tienda and estacion.get('tienda'):
+                    tienda_data = estacion.get('tienda', {})
+                    tienda_info = {
+                        "codigo": tienda_data.get('codigo_tienda', tienda_data.get('CodigoTienda', 'N/A')),
+                        "nombre": tienda_data.get('nombre_tienda', tienda_data.get('NombreTienda', 'N/A')),
+                        "tipo": tienda_data.get('tipo', tienda_data.get('Tipo', 'N/A'))
+                    }
+                
+                # Crear el objeto de respuesta según el formato requerido
+                estacion_resultado = {
+                    "id": str(estacion.get('id', 'N/A')),
+                    "compania": estacion.get('marca', estacion.get('Compania', 'N/A')),
+                    "direccion": estacion.get('direccion', estacion.get('Direccion', 'N/A')),
+                    "comuna": estacion.get('comuna', estacion.get('Comuna', 'N/A')),
+                    "region": estacion.get('region', estacion.get('Region', 'N/A')),
                     "latitud": est_lat,
                     "longitud": est_lng,
-                    "distancia": round(distancia, 2),
-                    "precio": precio_producto,
-                    "producto": product,
+                    "distancia(lineal)": round(distancia, 2),
+                    f"precios{product}": precio_producto,
                     "tiene_tienda": tiene_tienda
-                })
+                }
+                
+                # Agregar información de tienda si existe
+                if tienda_info:
+                    estacion_resultado["tienda"] = tienda_info
+                
+                resultado.append(estacion_resultado)
             
             # Implementación de los 4 casos de búsqueda
             if nearest and cheapest:
                 # Caso: más cercana con menor precio
-                resultado.sort(key=lambda x: x['distancia'])
+                resultado.sort(key=lambda x: x['distancia(lineal)'])
                 cercanas = resultado[:15]  # Top 15 más cercanas
-                cercanas.sort(key=lambda x: x['precio'])  # Entre esas, la más barata
+                cercanas.sort(key=lambda x: x[f'precios{product}'])  # Entre esas, la más barata
                 return cercanas[0] if cercanas else {"error": "No se encontraron estaciones"}
             elif nearest:
                 # Caso: más cercana
-                resultado.sort(key=lambda x: x['distancia'])
+                resultado.sort(key=lambda x: x['distancia(lineal)'])
             elif cheapest:
                 # Caso: menor precio
-                resultado.sort(key=lambda x: x['precio'])
+                resultado.sort(key=lambda x: x[f'precios{product}'])
             else:
                 # Sin criterios específicos, ordenar por distancia
-                resultado.sort(key=lambda x: x['distancia'])
+                resultado.sort(key=lambda x: x['distancia(lineal)'])
             
             return resultado[0] if resultado else {"error": "No se encontraron estaciones"}
             

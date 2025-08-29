@@ -58,16 +58,20 @@ curl "http://localhost:8000/api/stations/search?lat=-20.2&lng=-70.1&product=97&n
 {
   "success": true,
   "data": {
-    "id": 47,
-    "compania": 4,
-    "direccion": "OHiggins 2280",
-    "comuna": "Iquique",
-    "region": "Tarapacá",
-    "latitud": -20.219516041030868,
-    "longitud": -70.13424038887024,
-    "distancia": 4.18,
-    "precio": 1307,
-    "producto": "93",
+    "id": "10056",
+    "compania": "COPEC",
+    "direccion": "San Martin Esq. Uribe",
+    "comuna": "Antofagasta",
+    "region": "ANTOFAGASTA",
+    "latitud": -23.6491868026,
+    "longitud": -70.4011811037,
+    "distancia(lineal)": 0.5,
+    "precios93": 1328,
+    "tienda": {
+      "codigo": "2510",
+      "nombre": "Pronto Antofagasta",
+      "tipo": "Pronto"
+    },
     "tiene_tienda": true
   }
 }

@@ -51,7 +51,7 @@ class TestsAPI:
         response = client.get("/api/stations/search?lat=-23.65&lng=-70.40&product=93&nearest=true")
         assert response.status_code == 200
         data = response.json()
-        # Puede ser success=true o false dependiendo de la disponibilidad de la API externa
+        # Puede ser success=true o false dependiendo de la disponibilidad de la API EXTERNA
         assert "success" in data
         
         if data["success"]:
